@@ -494,6 +494,7 @@ fn get_derive_macros(new: &DeriveInput, extra_derive: &[String]) -> TokenStream 
 struct ParsedMacroParameters {
     new_struct_name: Option<String>,
     default_wrapping: bool,
+    skip_struct: bool,
 }
 
 impl Parse for ParsedMacroParameters {
@@ -501,6 +502,7 @@ impl Parse for ParsedMacroParameters {
         let mut out = ParsedMacroParameters {
             new_struct_name: None,
             default_wrapping: true,
+            skip_struct: false,
         };
 
         if let Ok(struct_name) = Ident::parse(input) {
@@ -515,6 +517,16 @@ impl Parse for ParsedMacroParameters {
 
         if let Ok(wrapping) = syn::LitBool::parse(input) {
             out.default_wrapping = wrapping.value;
+        } else {
+            return Ok(out);
+        };
+
+        if input.parse::<Token![,]>().is_err() {
+            return Ok(out);
+        };
+
+        if let Ok(wrapping) = syn::LitBool::parse(input) {
+            out.skip_struct = wrapping.value;
         } else {
             return Ok(out);
         };
@@ -576,6 +588,7 @@ struct GlobalOptions {
     extra_derive: Vec<String>,
     default_wrapping_behavior: bool,
     make_fields_public: bool,
+    skip_struct: bool,
 }
 
 impl GlobalOptions {
@@ -584,6 +597,7 @@ impl GlobalOptions {
             .new_struct_name
             .unwrap_or_else(|| "Optional".to_owned() + &struct_definition.ident.to_string());
         let default_wrapping_behavior = attr.default_wrapping;
+        let skip_struct = attr.skip_struct;
         GlobalOptions {
             new_struct_name,
             extra_derive: vec!["Clone", "PartialEq", "Default", "Debug"]
@@ -592,6 +606,7 @@ impl GlobalOptions {
                 .collect(),
             default_wrapping_behavior,
             make_fields_public: true,
+            skip_struct,
         }
     }
 }
@@ -624,13 +639,20 @@ pub fn opt_struct(attr: TokenStream, input: TokenStream) -> OptionalStructOutput
     let try_from_impl = try_from_generator.get_implementation(&derive_input, &new);
     let applicable_impl = applicable_impl_generator.get_implementation(&derive_input, &new);
 
-    let derives = get_derive_macros(&new, &macro_params.extra_derive);
+    let generated = if macro_params.skip_struct {
+        quote! {
+            #applicable_impl
+            #try_from_impl
+        }
+    } else {
+        let derives = get_derive_macros(&new, &macro_params.extra_derive);
+        quote! {
+            #derives
+            #new
 
-    let generated = quote! {
-        #derives
-        #new
-        #applicable_impl
-        #try_from_impl
+            #applicable_impl
+            #try_from_impl
+        }
     };
 
     OptionalStructOutput {

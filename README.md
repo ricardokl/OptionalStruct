@@ -189,6 +189,41 @@ struct will have the same field tagged `#[serde(skip_serializing_if = "Option::i
 This attribute makes serde skip fields entirely if the value of the `Option` is
 none (rather than saving e.g. `"value" = null` if serializing to json).
 
+7. Don't emit the optional struct definition.
+
+```rust
+use clap::Parser;
+use optional_struct::*;
+
+#[optional_struct(OptionalFoo, true, true)]
+pub struct Foo {
+    bar: char,
+    baz: bool,
+}
+
+#[derive(Parser, Debug, serde::Deserialize, serde::Serialize)]
+pub struct OptionalFoo {
+    #[clap(long)]
+    #[serde(default)]
+    pub bar: Option<char>,
+
+    #[clap(long)]
+    #[serde(default)]
+    pub baz: Option<bool>,
+}
+
+fn main() {
+    let opt_f = OptionalFoo::parse();
+    println!("{opt_f:?}");
+}
+```
+
+Normally `optional_struct` copies the derives and attributes from your original struct to the generated struct.   If you wish to specify different derives and/or attributes, the third parameter to the `optional_struct` macro tells `optional_struct` to skip emitting the struct definition so that it can be defined with different derives and/or attributes.   In this example, we use this capability to utilize [clap](https://docs.rs/clap/latest/clap/)'s derive macros.
+
+Even though the struct definition is not emitted, the impl for the struct is still emitted.   The following functions are still available:
+
+(See examples/clap.rs for a fuller example.)
+
 ## `apply`, `build`, and `try_build`
 
 Those three functions are used to build the final version of the structure, by
