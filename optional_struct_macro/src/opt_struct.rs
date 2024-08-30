@@ -525,8 +525,8 @@ impl Parse for ParsedMacroParameters {
             return Ok(out);
         };
 
-        if let Ok(wrapping) = syn::LitBool::parse(input) {
-            out.skip_struct = wrapping.value;
+        if let Ok(skip_struct) = syn::LitBool::parse(input) {
+            out.skip_struct = skip_struct.value;
         } else {
             return Ok(out);
         };
