@@ -58,7 +58,7 @@ impl GenerateTryFromImpl {
                 impl #impl_generics TryFrom<#new_name #ty_generics > #where_clause for #old_name #ty_generics {
                     type Error = #new_name #ty_generics;
 
-                    fn try_from(v: Self::Error) -> Result<Self, Self::Error> {
+                    fn try_from(v: Self::Error) -> std::result::Result<Self, Self::Error> {
                         #field_check_acc
                         Ok(Self {
                             #field_assign_acc
